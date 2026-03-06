@@ -410,7 +410,7 @@ void OSCNode::timer_callback() {
     if (!local_safety_override_active) {
         
         const double SHIN_LIMIT = M_PI / 4.0;
-        const double THIGH_LIMIT = 0.85;
+        const double THIGH_LIMIT = 0.95;
         
         // Check Thighs (0, 2, 4, 6) using local_state.motor_position
         for (size_t i : {0, 2, 4, 6}) {
