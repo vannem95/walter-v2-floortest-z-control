@@ -502,7 +502,7 @@ void OSCNode::timer_callback() {
         // Z control targets
         // ===============================================================
         // thigh - (kp - 600.0 — kd - 45.0)
-        double thigh_z_kp = 2000.0; double thigh_z_kv = 200.0;
+        double thigh_z_kp = 1300.0; double thigh_z_kv = 130.0;
         
         
         
