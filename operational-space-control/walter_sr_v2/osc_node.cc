@@ -81,7 +81,34 @@ namespace {
 
             // return std::max(-g_A.z(), -g_B.z()) + R_wheel;
             return std::max(-p_wheel_A.z(), -p_wheel_B.z()) + R_wheel;            
-        }    
+        }
+
+    double get_propeller_leg_height_velocity(
+        double q_hip, double q_knee, 
+        double dq_hip, double dq_knee,
+        double q_hip_offset, double q_knee_offset,
+        double L_thigh, double L_shin) 
+    {
+        double theta_hip  = q_hip + q_hip_offset;
+        double theta_knee = q_knee + q_knee_offset;
+        double global_shin = theta_hip + theta_knee;
+
+        // Chain rule inner derivatives
+        double d_theta_hip = dq_hip; 
+        double d_global_shin = dq_hip + dq_knee;
+
+        double sin_global_shin = std::sin(global_shin);
+        double cos_global_shin = std::cos(global_shin);
+        
+        // Derivative of absolute value |x| is sign(x) * dx
+        double sign_sin = (sin_global_shin >= 0.0) ? 1.0 : -1.0;
+
+        // Analytical velocity calculation
+        double v_height = -L_thigh * std::sin(theta_hip) * d_theta_hip 
+                        + L_shin * sign_sin * cos_global_shin * d_global_shin;
+        
+        return v_height;
+    }    
 
 }
 
@@ -494,21 +521,26 @@ void OSCNode::timer_callback() {
         double hip_z_hl = get_propeller_leg_height(q_body, local_state.motor_position(4), local_state.motor_position(5), 0, 0, L_THIGH, L_SHIN, R_WHEEL);
         double hip_z_hr = get_propeller_leg_height(q_body, local_state.motor_position(6), local_state.motor_position(7), 0, 0, L_THIGH, L_SHIN, R_WHEEL);
 
-        // Corrected static tracking declaration 
-        static double last_hip_z_tl = -1.0, last_hip_z_tr = -1.0, last_hip_z_hl = -1.0, last_hip_z_hr = -1.0;
-        
-        if (last_hip_z_tl < 0.0) { // Only true on first pass after tick 0
-            last_hip_z_tl = hip_z_tl; last_hip_z_tr = hip_z_tr; 
-            last_hip_z_hl = hip_z_hl; last_hip_z_hr = hip_z_hr; 
-        }
+        // Use instantaneous motor velocities to calculate exact Z velocity
+        double hip_zv_tl = get_propeller_leg_height_velocity(
+            local_state.motor_position(0), local_state.motor_position(1),
+            local_state.motor_velocity(0), local_state.motor_velocity(1),
+            0, 0, L_THIGH, L_SHIN);
 
-        // Avoid divide by zero if dt is somehow 0
-        if (dt <= 0.0) dt = 0.005;
-        
-        double hip_zv_tl = (hip_z_tl - last_hip_z_tl) / dt;
-        double hip_zv_tr = (hip_z_tr - last_hip_z_tr) / dt;
-        double hip_zv_hl = (hip_z_hl - last_hip_z_hl) / dt;
-        double hip_zv_hr = (hip_z_hr - last_hip_z_hr) / dt;
+        double hip_zv_tr = get_propeller_leg_height_velocity(
+            local_state.motor_position(2), local_state.motor_position(3),
+            local_state.motor_velocity(2), local_state.motor_velocity(3),
+            0, 0, L_THIGH, L_SHIN);
+
+        double hip_zv_hl = get_propeller_leg_height_velocity(
+            local_state.motor_position(4), local_state.motor_position(5),
+            local_state.motor_velocity(4), local_state.motor_velocity(5),
+            0, 0, L_THIGH, L_SHIN);
+
+        double hip_zv_hr = get_propeller_leg_height_velocity(
+            local_state.motor_position(6), local_state.motor_position(7),
+            local_state.motor_velocity(6), local_state.motor_velocity(7),
+            0, 0, L_THIGH, L_SHIN);
 
         double target_hip_z = hip_z_tl_initial;        
         double target_hip_z_vel = 0.0;
@@ -543,7 +575,7 @@ void OSCNode::timer_callback() {
         taskspace_targets_.row(7)(2) = hl_hip_z_ddq_cmd; taskspace_targets_.row(8)(2) = hr_hip_z_ddq_cmd;
 
 
-        last_hip_z_hl = hip_z_hl; last_hip_z_hr = hip_z_hr; last_hip_z_tl = hip_z_tl; last_hip_z_tr = hip_z_tr;        
+        // last_hip_z_hl = hip_z_hl; last_hip_z_hr = hip_z_hr; last_hip_z_tl = hip_z_tl; last_hip_z_tr = hip_z_tr;        
 
         // ==============================================================================
         // --- NEW: PUBLISH N x 6 MATRIX FOR ROSBAG RECORDING ---
