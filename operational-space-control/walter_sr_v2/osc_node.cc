@@ -549,7 +549,7 @@ void OSCNode::timer_callback() {
         // DYNAMIC SINE WAVE TARGET CALCULATION
         // ===============================================================
         // Define sine wave parameters
-        const double AMPLITUDE = 0.02;     // 2 cm amplitude 
+        const double AMPLITUDE = 0.0;     // 2 cm amplitude 
         const double FREQUENCY = 0.5;      // 0.5 Hz (1 full wave every 2 seconds)
         const double BASE_HEIGHT = hip_z_tl_initial; // Anchor around the starting height
         
