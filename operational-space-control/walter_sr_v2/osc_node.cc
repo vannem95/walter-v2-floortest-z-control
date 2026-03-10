@@ -552,15 +552,26 @@ void OSCNode::timer_callback() {
         const double AMPLITUDE = 0.0;     // 2 cm amplitude 
         const double FREQUENCY = 0.5;      // 0.5 Hz (1 full wave every 2 seconds)
         const double BASE_HEIGHT = hip_z_tl_initial; // Anchor around the starting height
-        
+
+        // Track elapsed time safely to prevent ROS clock jumps
+        static double start_time = current_time;
+        double elapsed_t = current_time - start_time;
+
+        // Ramp up the amplitude over the first 2 seconds to avoid startup shock
+        double ramp = std::clamp(elapsed_t / 4.0, 0.0, 1.0);
+        double active_amplitude = AMPLITUDE * ramp;
+
         // Calculate current angular frequency time 
-        double omega_t = 2.0 * M_PI * FREQUENCY * current_time;
+        double omega = 2.0 * M_PI * FREQUENCY;
+        double omega_t = omega * elapsed_t;
         
         // Target Z position: y(t) = A * sin(wt) + C
-        double target_hip_z = (AMPLITUDE * std::sin(omega_t)) + BASE_HEIGHT;
+        // double target_hip_z = (AMPLITUDE * std::sin(omega_t)) + BASE_HEIGHT;
+        // double target_hip_z_vel = AMPLITUDE * (2.0 * M_PI * FREQUENCY) * std::cos(omega_t);
+
+        double target_hip_z = (active_amplitude * std::sin(omega_t)) + BASE_HEIGHT;
+        double target_hip_z_vel = active_amplitude * omega * std::cos(omega_t);
         
-        // Analytical derivative for velocity feed-forward: y'(t) = A * w * cos(wt)
-        double target_hip_z_vel = AMPLITUDE * (2.0 * M_PI * FREQUENCY) * std::cos(omega_t);
         // ===============================================================        
         
 
